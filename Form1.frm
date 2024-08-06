@@ -11,6 +11,41 @@ Begin VB.Form Form1
    ScaleHeight     =   11055
    ScaleWidth      =   13935
    StartUpPosition =   3  'Windows Default
+   Begin VB.CommandButton search 
+      Caption         =   "Buscar"
+      BeginProperty Font 
+         Name            =   "MS Sans Serif"
+         Size            =   12
+         Charset         =   0
+         Weight          =   400
+         Underline       =   0   'False
+         Italic          =   0   'False
+         Strikethrough   =   0   'False
+      EndProperty
+      Height          =   495
+      Left            =   12240
+      TabIndex        =   16
+      Top             =   5280
+      Width           =   1095
+   End
+   Begin VB.TextBox search_box 
+      Alignment       =   2  'Center
+      BeginProperty Font 
+         Name            =   "MS Sans Serif"
+         Size            =   12
+         Charset         =   0
+         Weight          =   400
+         Underline       =   0   'False
+         Italic          =   0   'False
+         Strikethrough   =   0   'False
+      EndProperty
+      Height          =   435
+      Left            =   8640
+      TabIndex        =   15
+      Text            =   "Ingresa titulo a buscar"
+      Top             =   5280
+      Width           =   3495
+   End
    Begin VB.Frame Frame1 
       Caption         =   "Detalles"
       Height          =   3495
@@ -19,38 +54,38 @@ Begin VB.Form Form1
       Top             =   1320
       Width           =   9495
       Begin VB.CommandButton favorites 
-         Caption         =   "Favoritos"
+         Caption         =   "Agregar favoritos"
          Height          =   495
-         Left            =   8040
+         Left            =   7800
          MaskColor       =   &H8000000F&
          TabIndex        =   8
          Top             =   360
-         Width           =   1215
+         Width           =   1455
       End
       Begin VB.CommandButton read_later 
          BackColor       =   &H0080FF80&
-         Caption         =   "Leer mas tarde"
+         Caption         =   "Agregar leer mas tarde"
          Height          =   495
-         Left            =   8040
+         Left            =   7800
          TabIndex        =   7
          Top             =   960
-         Width           =   1215
+         Width           =   1455
       End
       Begin VB.CommandButton unfavorites 
-         Caption         =   "No gustados"
+         Caption         =   "Agregar no gustados"
          Height          =   495
-         Left            =   8040
+         Left            =   7800
          TabIndex        =   6
          Top             =   1560
-         Width           =   1215
+         Width           =   1455
       End
       Begin VB.CommandButton read 
          Caption         =   "Leer"
          Height          =   495
-         Left            =   8040
+         Left            =   7800
          TabIndex        =   5
          Top             =   2160
-         Width           =   1215
+         Width           =   1455
       End
       Begin VB.Label description 
          BackColor       =   &H00FFC0C0&
@@ -64,7 +99,7 @@ Begin VB.Form Form1
             Strikethrough   =   0   'False
          EndProperty
          Height          =   1575
-         Left            =   2280
+         Left            =   2160
          TabIndex        =   14
          Top             =   960
          Width           =   5295
@@ -118,7 +153,7 @@ Begin VB.Form Form1
             Strikethrough   =   0   'False
          EndProperty
          Height          =   375
-         Left            =   2280
+         Left            =   2040
          TabIndex        =   11
          Top             =   2760
          Width           =   2175
@@ -174,11 +209,11 @@ Begin VB.Form Form1
       Height          =   360
       ItemData        =   "Form1.frx":0000
       Left            =   2760
-      List            =   "Form1.frx":0013
+      List            =   "Form1.frx":004F
       Style           =   2  'Dropdown List
       TabIndex        =   2
       Top             =   5400
-      Width           =   1815
+      Width           =   2295
    End
    Begin MSComctlLib.ListView ListView1 
       Height          =   4695
@@ -211,7 +246,7 @@ Begin VB.Form Form1
    Begin VB.Label Label2 
       Alignment       =   2  'Center
       BackColor       =   &H00FFC0C0&
-      Caption         =   "Categorias "
+      Caption         =   "Generos "
       BeginProperty Font 
          Name            =   "MS Sans Serif"
          Size            =   18
@@ -270,19 +305,32 @@ Private conn As ADODB.Connection
 Private rs As ADODB.Recordset
 
 Private Sub categorys_Click()
+    Dim ID_User As Integer
+    ID_User = 1
     
-    Dim SQL As String
-    SQL = "SELECT * From Books WHERE Category = '" & categorys.Text & "'"
+    If categorys.Text = "-- Recomendacion --" Then
     
-    Set rs = New ADODB.Recordset
-    rs.Open SQL, conn, adOpenStatic, adLockReadOnly
-    
-    PopulateListView rs
-    
+        Dim SQL As String
+        SQL = "SELECT Users.ID_User, Users.Preferences, Books.Title, Books.B_Description, Books.Category, Books.Pages, Books.B_Year, Books.URL_img, Books.ID_Book " & _
+            "FROM Users " & _
+            "JOIN Books ON Users.Preferences = Books.Category " & _
+            "WHERE Users.ID_User = '" & ID_User & "'"
+            
+        Set rs = New ADODB.Recordset
+        rs.Open SQL, conn, adOpenStatic, adLockReadOnly
+        PopulateListView rs
+    Else
+        Dim SQL2 As String
+        SQL2 = "SELECT * From Books WHERE Category = '" & categorys.Text & "'"
+
+        Set rs = New ADODB.Recordset
+        rs.Open SQL2, conn, adOpenStatic, adLockReadOnly
+        PopulateListView rs
+    End If
 End Sub
 
 Private Sub favorites_Click()
-    
+    On Error GoTo ErrorHandler
     If ListView1.SelectedItem Is Nothing Then
         MsgBox "Selecciona un libro primero"
         Exit Sub
@@ -304,14 +352,32 @@ Private Sub favorites_Click()
     conn.Execute SQL
     
     MsgBox "Se agrego a favoritos exitosamente"
+ErrorHandler:
+    If Err.Number = -2147217873 Then
+        MsgBox "El registro ya existe. Por favor, ingrese un dato diferente.", vbExclamation
+    End If
     
 End Sub
 
 Private Sub Form_Load()
     Set conn = New ADODB.Connection
+    Dim configFilePath As String
+    configFilePath = App.path & "\.ini"
+    
+    Dim provider As String
+    Dim dataSource As String
+    Dim initialCatalog As String
+    Dim userID As String
+    Dim password As String
+    
+    provider = GetConfigValue("database", "provider", configFilePath)
+    dataSource = GetConfigValue("database", "data_source", configFilePath)
+    initialCatalog = GetConfigValue("database", "initial_catalog", configFilePath)
+    userID = GetConfigValue("database", "user_id", configFilePath)
+    password = GetConfigValue("database", "password", configFilePath)
     
     Dim ConnectionString As String
-    ConnectionString = "Provider=SQLOLEDB; Data Source=KOTZ-DESKTOP;Initial Catalog=Books;User ID=bryan;Password=123;"
+    ConnectionString = "Provider=" & provider & "; Data Source=" & dataSource & "; Initial Catalog=" & initialCatalog & "; User ID=" & userID & "; Password=" & password & ";"
     
     On Error GoTo ErrorHandler
     conn.Open ConnectionString
@@ -362,8 +428,6 @@ Private Sub PopulateListView(ByRef rs As ADODB.Recordset)
         rs.MoveNext
     Loop
 End Sub
-
-
 Private Sub ListView1_ItemClick(ByVal Item As MSComctlLib.ListItem)
     
     Dim path As String
@@ -382,7 +446,42 @@ Private Sub MyBooks_Click()
     Unload Me
 End Sub
 
+Private Sub read_Click()
+    If ListView1.SelectedItem Is Nothing Then
+        MsgBox "Selecciona un libro primero"
+        Exit Sub
+    End If
+    
+    Dim selectitem As MSComctlLib.ListItem
+    Set selectitem = ListView1.SelectedItem
+    
+    Dim ID_Book As Integer
+    Dim ID_User As Integer
+    
+    ID_User = 1
+    ID_Book = selectitem.SubItems(6)
+    
+    Dim SQL As String
+    SQL = "SELECT * FROM History " & _
+    "WHERE ID_User = '" & ID_User & "' AND ID_Book = '" & ID_Book & "'"
+    
+    Set rs = New ADODB.Recordset
+    rs.Open SQL, conn, adOpenStatic, adLockReadOnly
+    
+    If Not rs.EOF Then
+        MsgBox "Leyendo libro"
+    Else
+        Dim SQL2 As String
+        SQL2 = "INSERT INTO History(ID_User, ID_Book) " & _
+        "VALUES ('" & ID_User & "', '" & ID_Book & "')"
+        conn.Execute SQL2
+        MsgBox "Leyendo libro"
+    End If
+    
+End Sub
+
 Private Sub read_later_Click()
+    On Error GoTo ErrorHandler
     If ListView1.SelectedItem Is Nothing Then
         MsgBox "Selecciona un libro primero"
         Exit Sub
@@ -404,4 +503,54 @@ Private Sub read_later_Click()
     conn.Execute SQL
     
     MsgBox "Se agrego a leer mas tarde exitosamente"
+    
+ErrorHandler:
+    If Err.Number = -2147217873 Then
+        MsgBox "El registro ya existe. Por favor, ingrese un dato diferente.", vbExclamation
+    End If
+    
+End Sub
+
+Private Sub search_Click()
+    
+    Dim textBox As String
+    textBox = search_box.Text
+    
+    Dim SQL As String
+    SQL = "SELECT * FROM Books " & _
+    "Where Title LIKE '%" & textBox & "%' "
+    
+    Set rs = New ADODB.Recordset
+    rs.Open SQL, conn, adOpenStatic, adLockReadOnly
+    
+    PopulateListView rs
+End Sub
+
+Private Sub unfavorites_Click()
+    On Error GoTo ErrorHandler
+    If ListView1.SelectedItem Is Nothing Then
+        MsgBox "Selecciona un libro primero"
+        Exit Sub
+    End If
+    
+    Dim selectitem As MSComctlLib.ListItem
+    Set selectitem = ListView1.SelectedItem
+    
+    Dim ID_Book As Integer
+    Dim ID_User As Integer
+    
+    ID_User = 1
+    ID_Book = selectitem.SubItems(6)
+    
+    Dim SQL As String
+    SQL = "INSERT INTO Unfavorites(ID_User, ID_Book)" & _
+    "VALUES ('" & ID_User & "', '" & ID_Book & "')"
+    
+    conn.Execute SQL
+    
+    MsgBox "Se Agrego a no gustados"
+ErrorHandler:
+    If Err.Number = -2147217873 Then
+        MsgBox "El registro ya existe. Por favor, ingrese un dato diferente.", vbExclamation
+    End If
 End Sub

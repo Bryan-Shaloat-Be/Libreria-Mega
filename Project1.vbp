@@ -4,6 +4,7 @@ Reference=*\G{2A75196C-D9EB-4129-B803-931327F72D5C}#2.8#0#C:\Program Files (x86)
 Object={831FDD16-0C5C-11D2-A9FC-0000F8754DA1}#2.0#0; MSCOMCTL.OCX
 Form=Form1.frm
 Form=Form2.frm
+Module=Module1; Module1.bas
 Startup="Form1"
 Command32=""
 Name="Project1"
